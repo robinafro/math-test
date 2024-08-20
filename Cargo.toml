@@ -1,0 +1,8 @@
+[package]
+name = "linearalg"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+meval = "0.2.0"
+symbolica = "0.9.0"
