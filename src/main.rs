@@ -1,42 +1,50 @@
-use symbolica::parser::parse;
-use symbolica::symbolic::Symbolic;
+use symengine::{Expression, Symbol, solve, Eq, Set};
 use std::collections::HashSet;
 use std::io::{self, Write};
 
-fn solve_any_number_of_equations() -> Result<symbolica::symbolic::Solution, symbolica::error::Error> {
-    let mut equations_str = vec![];
-
+fn main() {
+    let mut equations_str = Vec::new();
+    
     loop {
         print!("Enter an equation (or press Enter to finish): ");
-        io::stdout().flush().unwrap();
+        io::stdout().flush().unwrap();  // Make sure the prompt is displayed
         let mut eq = String::new();
         io::stdin().read_line(&mut eq).unwrap();
         let eq = eq.trim();
+        
         if eq.is_empty() {
             break;
         }
+        
         equations_str.push(eq.to_string());
     }
 
-    let equations: Vec<Symbolic> = equations_str.iter()
-        .map(|eq| {
-            let sides: Vec<&str> = eq.split('=').collect();
-            let lhs = parse(sides[0]).unwrap();
-            let rhs = parse(sides[1]).unwrap();
-            lhs - rhs
-        })
-        .collect();
+    let mut equations = Vec::new();
+    let mut variables = HashSet::new();
 
-    let variables: HashSet<_> = equations.iter()
-        .flat_map(|eq| eq.free_symbols())
-        .collect();
+    for eq_str in equations_str {
+        let parts: Vec<&str> = eq_str.split('=').collect();
+        if parts.len() != 2 {
+            eprintln!("Invalid equation format: {}", eq_str);
+            continue;
+        }
 
-    symbolica::solve::solve_equations(equations, &variables.into_iter().collect::<Vec<_>>())
-}
+        let lhs = Expression::from(parts[0].trim());
+        let rhs = Expression::from(parts[1].trim());
+        let equation = Eq(lhs - rhs, Expression::from(0));
 
-fn main() {
-    match solve_any_number_of_equations() {
-        Ok(solutions) => println!("Solutions: {:?}", solutions),
-        Err(err) => eprintln!("An error occurred: {:?}", err),
+        equations.push(equation);
+
+        // Collect variables
+        let mut eq_vars = lhs.free_symbols();
+        eq_vars.extend(rhs.free_symbols());
+        for var in eq_vars {
+            variables.insert(var);
+        }
     }
+
+    let symbols: Vec<Symbol> = variables.into_iter().collect();
+    let solutions = solve(&equations, &symbols);
+
+    println!("Solutions: {:?}", solutions);
 }
